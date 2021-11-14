@@ -55,5 +55,12 @@ resource "azurerm_function_app" "function" {
     dotnet_framework_version = "v6.0"
     ftps_state               = "Disabled"
     min_tls_version          = "1.2"
+
+    dynamic "ip_restriction" {
+      for_each = var.allowed_ip_addresses
+      content {
+        ip_address = ip_restriction.value
+      }
+    }
   }
 }

@@ -24,9 +24,35 @@ variable "app_insights_name" {
   description = "The name of the Application Insights to create."
 }
 
+variable "workspace_name" {
+  type        = string
+  description = "The name of the Log Analytics Workspace to create."
+}
+
 variable "resource_group_name" {
   type        = string
   description = "Resource group name to be added."
+}
+
+variable "auth_settings" {
+  type = object({
+    enabled                       = bool
+    issuer                        = string
+    token_store_enabled           = bool
+    unauthenticated_client_action = string
+    active_directory = object({
+      client_id         = string
+      allowed_audiences = list(string)
+    })
+  })
+  description = "Authentication settings for the function app"
+  default     = null
+}
+
+variable "app_settings" {
+  description = "Additional settings to set for the function app"
+  type        = map(string)
+  default     = {}
 }
 
 variable "location" {
@@ -56,10 +82,22 @@ variable "environment" {
   default     = "AzureCloud"
 }
 
+variable "time_zone" {
+  type        = string
+  description = "The name of time zone as the basis for automatic update timing."
+  default     = "UTC"
+}
+
 variable "webhook_url" {
   type        = string
   description = "The webhook where notifications will be sent."
-  default     = ""
+  default     = null
+}
+
+variable "mitigate_chain_order" {
+  type        = bool
+  description = "Mitigate certificate ordering issues that occur with some services."
+  default     = false
 }
 
 variable "external_account_binding" {
@@ -99,6 +137,13 @@ variable "dns_made_easy" {
   type = object({
     api_key    = string
     secret_key = string
+  })
+  default = null
+}
+
+variable "gandi" {
+  type = object({
+    api_key = string
   })
   default = null
 }
@@ -161,6 +206,10 @@ locals {
     "Acmebot:DnsMadeEasy:SecretKey" = var.dns_made_easy.secret_key
   } : {}
 
+  gandi = var.gandi != null ? {
+    "Acmebot:Gandi:ApiKey" = var.gandi.api_key
+  } : {}
+
   go_daddy = var.go_daddy != null ? {
     "Acmebot:GoDaddy:ApiKey"    = var.go_daddy.api_key
     "Acmebot:GoDaddy:ApiSecret" = var.go_daddy.api_secret
@@ -185,10 +234,11 @@ locals {
   } : {}
 
   common = {
-    "Acmebot:Contacts"     = var.mail_address
-    "Acmebot:Endpoint"     = var.acme_endpoint
-    "Acmebot:VaultBaseUrl" = var.vault_uri
-    "Acmebot:Environment"  = var.environment
+    "Acmebot:Contacts"           = var.mail_address
+    "Acmebot:Endpoint"           = var.acme_endpoint
+    "Acmebot:VaultBaseUrl"       = var.vault_uri
+    "Acmebot:Environment"        = var.environment
+    "Acmebot:MitigateChainOrder" = var.mitigate_chain_order
   }
 
   acmebot_app_settings = merge(
@@ -198,6 +248,7 @@ locals {
     local.cloudflare,
     local.custom_dns,
     local.dns_made_easy,
+    local.gandi,
     local.go_daddy,
     local.google_dns,
     local.gratis_dns,
